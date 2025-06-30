@@ -1,0 +1,154 @@
+UNWIND [
+  {name:'dallas_amf_1', location:'TX', technology:'5GSA', market:'South'},
+  {name:'dallas_amf_2', location:'TX', technology:'5GSA', market:'South'},
+  {name:'denver_amf_1', location:'CO', technology:'5GSA', market:'North'},
+  {name:'denver_amf_2', location:'CO', technology:'5GSA', market:'North'},
+  {name:'sfo_amf_1', location:'CA', technology:'5GSA', market:'West'},
+  {name:'sfo_amf_2', location:'CA', technology:'5GSA', market:'West'},
+  {name:'nj_amf_1', location:'NJ', technology:'5GSA', market:'East'},
+  {name:'nj_amf_2', location:'NJ', technology:'5GSA', market:'East'}
+] AS row
+CALL apoc.create.node([row.location, row.technology, row.market, "AMF"], {name: row.name}) 
+YIELD node
+RETURN node;
+
+
+
+UNWIND [
+  {name:'dallas_upf_1', location:'TX', technology:'5GSA', market:'South'},
+  {name:'dallas_upf_2', location:'TX', technology:'5GSA', market:'South'},
+  {name:'denver_upf_1', location:'CO', technology:'5GSA', market:'North'},
+  {name:'denver_upf_2', location:'CO', technology:'5GSA', market:'North'},
+  {name:'sfo_upf_1', location:'CA', technology:'5GSA', market:'West'},
+  {name:'sfo_upf_2', location:'CA', technology:'5GSA', market:'West'},
+  {name:'nj_upf_1', location:'NJ', technology:'5GSA', market:'East'},
+  {name:'nj_upf_2', location:'NJ', technology:'5GSA', market:'East'}
+] AS row
+CALL apoc.create.node([row.location, row.technology, row.market, "UPF"], {name: row.name})
+YIELD node
+RETURN node;
+
+
+UNWIND [
+  {name:'dallas_ta_1', location:'TX', technology:'5GSA', market:'South'},
+  {name:'dallas_ta_2', location:'TX', technology:'5GSA', market:'South'},
+  {name:'denver_ta_1', location:'CO', technology:'5GSA', market:'North'},
+  {name:'denver_ta_2', location:'CO', technology:'5GSA', market:'North'},
+  {name:'sfo_ta_1', location:'CA', technology:'5GSA', market:'West'},
+  {name:'sfo_ta_2', location:'CA', technology:'5GSA', market:'West'},
+  {name:'nj_ta_1', location:'NJ', technology:'5GSA', market:'East'},
+  {name:'nj_ta_2', location:'NJ', technology:'5GSA', market:'East'}
+] AS row
+CALL apoc.create.node([row.location, row.technology, row.market, "TestAgent"], {name: row.name})
+YIELD node
+RETURN node;
+
+
+UNWIND [
+  {name: 'ping'},
+  {name: 'http'},
+  {name: 'speedtest'},
+  {name: 'voicetest'},
+  {name: 'e911'},
+  {name: 'traceroute'}
+] AS row
+CREATE (:TestType {name: row.name});
+
+
+
+MATCH (agent:TestAgent {name: "dallas_ta_1"})
+MATCH (tt:TestType {name: "ping"})
+MATCH (sut:AMF {name: "dallas_amf_1"})
+
+CREATE (cfg:TestConfig {
+  sourceIP: "10.22.23.34",
+  targetIP: "10.11.12.13",
+  interval: "15s",       // Optional, if known
+  protocol: "ICMP"        // Optional metadata
+})
+
+CREATE (res:TestResult {
+  timestamp: time("23:45:43"),
+  jitter: 2,
+  throughput: 33,
+  rtt: 12,
+  uplink: 14,
+  downlink: 65
+})
+
+MERGE (agent)-[:EXECUTED]->(tt)
+MERGE (tt)-[:CONFIGURED_AS]->(cfg)
+CREATE (cfg)-[:GETTING_RESULTS]->(res)
+CREATE (res)-[:TARGETED_TO]->(sut);
+
+UNWIND [
+  {
+    testtype: "ping", time: "23:45:58",
+    sourceIP: "10.22.23.35", sourceNode: "dallas_ta_2",
+    targetIP: "10.11.12.14", targetNode: "dallas_amf_2",
+    jitter: 3, throughput: 34, rtt: 13, uplink: 15, downlink: 54
+  },
+  {
+    testtype: "ping", time: "23:46:13",
+    sourceIP: "10.22.24.34", sourceNode: "denver_ta_1",
+    targetIP: "10.11.13.13", targetNode: "denver_amf_1",
+    jitter: 4, throughput: 35, rtt: 11, uplink: 16, downlink: 63
+  },
+  {
+    testtype: "ping", time: "23:46:28",
+    sourceIP: "10.22.24.35", sourceNode: "denver_ta_2",
+    targetIP: "10.11.13.14", targetNode: "denver_amf_2",
+    jitter: 2, throughput: 36, rtt: 11, uplink: 17, downlink: 61
+  },
+  {
+    testtype: "ping", time: "23:46:43",
+    sourceIP: "10.22.25.34", sourceNode: "sfo_ta_1",
+    targetIP: "10.11.14.13", targetNode: "sfo_amf_1",
+    jitter: 3, throughput: 24, rtt: 10.5, uplink: 14, downlink: 65
+  },
+  {
+    testtype: "ping", time: "23:46:58",
+    sourceIP: "10.22.25.35", sourceNode: "sfo_ta_2",
+    targetIP: "10.11.14.14", targetNode: "sfo_amf_2",
+    jitter: 4, throughput: 25, rtt: 10, uplink: 15, downlink: 54
+  },
+  {
+    testtype: "ping", time: "23:47:13",
+    sourceIP: "10.22.26.34", sourceNode: "nj_ta_1",
+    targetIP: "10.11.15.13", targetNode: "nj_amf_1",
+    jitter: 2, throughput: 26, rtt: 9.5, uplink: 16, downlink: 63
+  },
+  {
+    testtype: "ping", time: "23:47:28",
+    sourceIP: "10.22.26.35", sourceNode: "nj_ta_2",
+    targetIP: "10.11.15.14", targetNode: "nj_amf_2",
+    jitter: 2, throughput: 27, rtt: 14, uplink: 17, downlink: 61
+  }
+] AS row
+
+// MATCH the static backbone
+MATCH (agent:TestAgent {name: row.sourceNode})
+MATCH (tt:TestType {name: row.testtype})
+MATCH (sut:AMF {name: row.targetNode})
+
+// CREATE dynamic config + result
+CREATE (cfg:TestConfig {
+  sourceIP: row.sourceIP,
+  targetIP: row.targetIP,
+  protocol: "ICMP",          // You can parametrize this if needed
+  interval: "15s"            // Optional metadata
+})
+CREATE (res:TestResult {
+  timestamp: time(row.time),
+  jitter: row.jitter,
+  throughput: row.throughput,
+  rtt: row.rtt,
+  uplink: row.uplink,
+  downlink: row.downlink
+})
+
+// Connect the chain
+MERGE (agent)-[:EXECUTED]->(tt)
+MERGE (tt)-[:CONFIGURED_AS]->(cfg)
+CREATE (cfg)-[:GETTING_RESULTS]->(res)
+CREATE (res)-[:TARGETED_TO]->(sut);

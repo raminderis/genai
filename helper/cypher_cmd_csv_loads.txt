@@ -1,0 +1,124 @@
+
+AMF:
+LOAD CSV WITH HEADERS
+FROM 'https://drive.google.com/uc?export=download&id=1R4kZd7ofC_kOIMfOpbD9I-BrFmT9-Jhz' AS row
+WITH row, apoc.map.removeKey(row, 'amfPlot_embedding') AS props
+MERGE (n:AMF {name: row.Name})
+SET n += props
+WITH row,n
+CALL db.create.setNodeVectorProperty(n, 'embedding', apoc.convert.fromJsonList(row.amfPlot_embedding))
+
+
+TESTRESULTS:
+LOAD CSV WITH HEADERS
+FROM 'https://drive.google.com/uc?export=download&id=1rk7ctDxRGOeJ0sOhJ8g00qLTLbNFpCzn' AS row
+WITH row, apoc.map.removeKey(row, 'resultPlot_embedding') AS props
+MERGE (n:TESTRESULT {name: row.testtype + "_" + row.sourcenode + "_" + row.targetnode})
+SET n += props
+WITH row,n
+CALL db.create.setNodeVectorProperty(n, 'embedding', apoc.convert.fromJsonList(row.resultPlot_embedding))
+
+MATCH (t:TESTRESULT)
+MERGE (target:AMF {Name: t.targetnode})
+MERGE (t)-[:TARGETS]->(target)
+
+
+CREATE VECTOR INDEX amf IF NOT EXISTS
+FOR (n:AMF)
+ON (n.embedding)
+OPTIONS {
+  indexConfig: {
+    `vector.dimensions`: 1536,
+    `vector.similarity_function`: 'cosine'
+  }
+}
+
+
+CREATE VECTOR INDEX testresult IF NOT EXISTS
+FOR (n:TESTRESULT)
+ON (n.embedding)
+OPTIONS {
+  indexConfig: {
+    `vector.dimensions`: 1536,
+    `vector.similarity_function`: 'cosine'
+  }
+}
+
+CREATE VECTOR INDEX pingtext IF NOT EXISTS
+FOR (n:StandardDocChunk)
+ON (n.embedding)
+OPTIONS {
+  indexConfig: {
+    `vector.dimensions`: 1536,
+    `vector.similarity_function`: 'cosine'
+  }
+}
+
+
+MATCH (q:Question {text: "What are the most touristic countries in the world?"})
+CALL db.index.vector.queryNodes('questions', 6, q.embedding)
+YIELD node, score
+RETURN node.text, score
+
+MATCH (q:TESTRESULT {resultPlot: "dallas_ta_1 ran a ping test at 11:45:43 PM towards dallas_amf_1, the test result was a failure with jitter 2, throughput 33, rtt 12, uplink 14 and downlink 65"})
+CALL db.index.vector.queryNodes('testresult', 20, q.embedding)
+YIELD node, score
+RETURN node.resultPlot, score
+
+MATCH (q:AMF {amfPlot: "dallas_amf_1 is an AMF in Dallas, Texas and deployed in 5G Stand Alone technology within Verizon's USA South Market"})
+CALL db.index.vector.queryNodes('amf', 20, q.embedding)
+YIELD node, score
+RETURN node.amfPlot, score
+
+
+
+///
+
+
+WITH genai.vector.encode(
+    "dallas_amf_1 is an AMF in Dallas",
+    "OpenAI",
+    { token: "sk" }) AS userEmbedding
+CALL db.index.vector.queryNodes('amf', 6, userEmbedding)
+YIELD node, score
+RETURN node.text, score
+
+WITH genai.vector.encode(
+    "Dallas AMF nodes",
+    "OpenAI",
+    { token: "sk-" }) AS userEmbedding
+CALL db.index.vector.queryNodes('amf', 6, userEmbedding)
+YIELD node, score
+RETURN node.amfPlot, score
+
+/////
+
+then move to python 
+tools/vector.py 
+1. update from_existing_index
+2. create retriever
+
+agent.py
+1. update tools
+2. update from_template
+
+.streamlit/secret.toml
+1. NEO4J_URI and password update. 
+
+
+////
+
+ping text doc:
+CREATE (d:StandardDoc {
+  title: "ICMP Protocol Reference",
+  type: "RFC",
+  rfc_number: "792",
+  topic: "ICMP",
+  createdAt: datetime()
+})
+RETURN id(d) AS docId
+docId = 48
+
+
+/////
+

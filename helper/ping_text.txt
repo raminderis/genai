@@ -1,0 +1,31 @@
+Ping is a foundational network diagnostic tool that tests the reachability of a host on an Internet Protocol (IP) network. At its core, ping is not a protocol itself but a utility that leverages the Internet Control Message Protocol (ICMP)—a critical component of the IP suite.
+
+What Is ICMP?
+ICMP is defined in RFC 792 and operates at the network layer (Layer 3) of the OSI model. It is primarily used for sending error messages and operational information indicating issues like unreachable hosts, TTL (Time To Live) expiration, or routing problems.
+Unlike TCP or UDP, ICMP is not used to exchange data between systems; rather, it communicates control information and is generally processed by the operating system kernel—not passed to applications.
+
+How Ping Works
+When you run ping <hostname or IP>, here's what happens:
+- The source host sends an ICMP Echo Request packet to the destination.
+- If reachable, the destination replies with an ICMP Echo Reply.
+- The originating host measures round-trip time (RTT) and reports statistics such as packet loss and timing variations.
+This makes ping invaluable for checking basic network connectivity and latency—whether between routers, servers, or edge devices.
+
+What Does Ping Reveal?
+- Successful Echo Replies confirm IP-level connectivity.
+- High RTT values may suggest congestion or longer routes.
+- Packet loss indicates potential network instability.
+- No response often points to a firewall or routing issue, though ICMP replies may also be deliberately blocked.
+
+Technical Anatomy of a Ping Packet
+- Type: 8 (Echo Request), 0 (Echo Reply)
+- Code: 0
+- Checksum: for error-checking
+- Identifier & Sequence Number: for correlating replies to requests
+- Payload: often includes a timestamp or filler data
+
+Limitations and Security
+Because ICMP can be abused (e.g., ping floods in DoS attacks), many networks rate-limit or block ping traffic. Modern tools like fping, nping, or even traceroute may be used for more advanced diagnostics, though they often still rely on ICMP under the hood.
+
+Why It Matters in Observability Graphs
+In intelligent infrastructure systems, mapping ping measurements to entities like AMF nodes offers real-time insight into device responsiveness and service reachability. When correlated with test metadata and historical patterns, ping results enrich fault diagnosis and predictive analytics.
